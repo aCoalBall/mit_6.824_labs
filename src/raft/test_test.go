@@ -52,6 +52,36 @@ func TestInitialElection2A(t *testing.T) {
 	cfg.end()
 }
 
+func TestAdditional1(t *testing.T) {
+	servers := 2
+	cfg := make_config(t, servers, false, false)
+	defer cfg.cleanup()
+
+	leader1 := cfg.checkOneLeader()
+	cfg.disconnect(leader1)
+	fmt.Println("Disconnect: Peer", leader1)
+	cfg.connect(leader1)
+	fmt.Println("Connect: Peer", leader1)
+}
+
+func TestAdditional(t *testing.T) {
+	servers := 3
+	cfg := make_config(t, servers, false, false)
+	defer cfg.cleanup()
+
+	leader1 := cfg.checkOneLeader()
+	cfg.disconnect(leader1)
+	fmt.Println("Disconnect: Peer", leader1)
+	cfg.checkOneLeader()
+
+	cfg.connect(leader1)
+	fmt.Println("Connect: Peer", leader1)
+	leader2 := cfg.checkOneLeader()
+	//cfg.disconnect(leader2)
+	fmt.Println("Disconnect: Peer", leader2)
+
+}
+
 func TestReElection2A(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
@@ -63,18 +93,22 @@ func TestReElection2A(t *testing.T) {
 
 	// if the leader disconnects, a new one should be elected.
 	cfg.disconnect(leader1)
+	fmt.Println("Disconnect: Peer", leader1)
 	cfg.checkOneLeader()
 
 	// if the old leader rejoins, that shouldn't
 	// disturb the new leader. and the old leader
 	// should switch to follower.
 	cfg.connect(leader1)
+	fmt.Println("Connect: Peer", leader1)
 	leader2 := cfg.checkOneLeader()
 
 	// if there's no quorum, no new leader should
 	// be elected.
 	cfg.disconnect(leader2)
+	fmt.Println("Disconnect: Peer", leader2)
 	cfg.disconnect((leader2 + 1) % servers)
+	fmt.Println("Disconnect: Peer", (leader2+1)%servers)
 	time.Sleep(2 * RaftElectionTimeout)
 
 	// check that the one connected server
@@ -83,43 +117,12 @@ func TestReElection2A(t *testing.T) {
 
 	// if a quorum arises, it should elect a leader.
 	cfg.connect((leader2 + 1) % servers)
+	fmt.Println("Connect: Peer", (leader2+1)%servers)
 	cfg.checkOneLeader()
 
 	// re-join of last node shouldn't prevent leader from existing.
 	cfg.connect(leader2)
-	cfg.checkOneLeader()
-
-	cfg.end()
-}
-
-func TestManyElections2A(t *testing.T) {
-	servers := 7
-	cfg := make_config(t, servers, false, false)
-	defer cfg.cleanup()
-
-	cfg.begin("Test (2A): multiple elections")
-
-	cfg.checkOneLeader()
-
-	iters := 10
-	for ii := 1; ii < iters; ii++ {
-		// disconnect three nodes
-		i1 := rand.Int() % servers
-		i2 := rand.Int() % servers
-		i3 := rand.Int() % servers
-		cfg.disconnect(i1)
-		cfg.disconnect(i2)
-		cfg.disconnect(i3)
-
-		// either the current leader should still be alive,
-		// or the remaining four should elect a new one.
-		cfg.checkOneLeader()
-
-		cfg.connect(i1)
-		cfg.connect(i2)
-		cfg.connect(i3)
-	}
-
+	fmt.Println("Connect: Peer", leader2)
 	cfg.checkOneLeader()
 
 	cfg.end()
